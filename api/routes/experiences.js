@@ -1,6 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const Experience = require("../models/Experience");
+const nodemailer = require("nodemailer");
+const User = require("../models/User");
 
 // Include npm packages
 const natural = require("natural");
@@ -108,7 +110,7 @@ router.post("/addExperience", async (req, res) => {
     const {
       company, batch, cgpaCutoff, experienceType,
       eligibleBranches, OT_description, OT_duration, OT_questions, interviewRounds, other_comments,
-      jobDescription, numberOfSelections
+      jobDescription, numberOfSelections, comments,
     } = req.body;
 
     // Validate required fields
@@ -151,6 +153,7 @@ router.post("/addExperience", async (req, res) => {
       jobDescription,
       numberOfSelections,
       status: "Pending",
+      comments,
     });
     const savedExperience = await newExperience.save();
     res.status(201).json({ success: true, message: 'Experience added successfully!' });
@@ -276,4 +279,135 @@ router.post('/company', async (req, res) => {
     res.status(500).json({ message: 'Failed to fetch company search results' });
   }
 });
+
+
+router.get("/:id/comments", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const experience = await Experience.findById(id)
+    .populate("comments.user", "firstName lastName")
+    .populate("comments.replies.user", "firstName lastName");
+    if (!experience) return res.status(404).json({ message: "Experience not found" });
+
+    res.status(200).json(experience.comments);
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    res.status(500).json({ message: "Failed to fetch comments" });
+  }
+});
+
+router.post("/:id/comments", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { text } = req.body;
+
+    if (!req.user || !req.user.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    if (!text || text.trim() === "") {
+      return res.status(400).json({ message: "Comment text is required" });
+    }
+
+    const experience = await Experience.findById(id).populate("user");
+    if (!experience) return res.status(404).json({ message: "Experience not found" });
+
+    experience.comments.push({
+      user: req.user.user._id,
+      text,
+    });
+    await experience.save();
+    await experience.populate("comments.user", "firstName lastName");
+
+    const created = experience.comments[experience.comments.length - 1];
+
+    const owner = experience.user;
+    // console.log(owner);
+    const commenter = req.user.user;
+
+    if (owner.email) {
+      const transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.FEEDBACK_MAIL_USER,
+          pass: process.env.FEEDBACK_MAIL_PASS,
+        },
+      });
+
+      await transporter.sendMail({
+        from: `"interNito Comment" <${process.env.FEEDBACK_MAIL_USER}>`,
+        to: owner.email,
+        subject: `New comment on your ${experience.company} experience`,
+        replyTo: commenter.email,
+        html: `
+          <div style="font-family:'Poppins',Arial,sans-serif;max-width:600px;margin:0 auto;background:#f9f9f9;padding:32px 24px 24px 24px;border-radius:16px;box-shadow:0 2px 12px rgba(34,139,34,0.07);">
+            <div style="text-align:center;margin-bottom:18px;">
+              <img src="https://drive.usercontent.google.com/download?id=15i1bEJ-SXKmF4WwqDLo83Qot7rrzSRSA&export=view&authuser=0" alt="interNito Logo" style="width:70px;height:auto;margin-bottom:8px;display:inline-block;" />
+            </div>
+            <div style="text-align:center;margin-bottom:24px;">
+              <h2 style="margin:0;font-size:1.5rem;color:#222;font-weight:600;letter-spacing:0.01em;">New Comment Received</h2>
+            </div>
+            <div style="background:#fff;border-radius:12px;padding:20px 18px 14px 18px;border:1.5px solid #e0e0e0;">
+              <p style="margin:0 0 8px 0;font-size:1.05rem;color:#333;">
+                <strong>From:</strong> <span style="color:#76b852;">${commenter.firstName} ${commenter.lastName || ""} (${commenter.email})</span>
+              </p>
+              <p style="margin:0 0 8px 0;font-size:1.05rem;color:#333;">
+                <strong>Comment:</strong>
+              </p>
+              <div style="border-left:4px solid #76b852;padding-left:14px;margin:8px 0 16px 0;color:#222;font-size:1.08rem;line-height:1.6;background:#f6fff4;border-radius:6px;">
+                ${text}
+              </div>
+              <p style="font-size:0.97rem;color:#888;margin:0 0 4px 0;">
+                <em>Replying to this email will send your response directly to the commenter.</em>
+              </p>
+            </div>
+            <div style="margin-top:28px;text-align:center;font-size:0.95rem;color:#aaa;">
+              <span>interNito Notification System</span>
+            </div>
+          </div>
+        `,
+      });
+    }
+
+    return res.status(201).json({ comment: created });
+  } catch (error) {
+    console.error("Error adding comment:", error);
+    res.status(500).json({ message: "Failed to add comment" });
+  }
+});
+
+router.post("/:experienceId/comments/:commentId/replies", async (req, res) => {
+  try {
+    if (!req.user || !req.user.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+
+    const { experienceId, commentId } = req.params;
+    const { text } = req.body;
+
+    if (!text || text.trim() === "") {
+      return res.status(400).json({ message: "Reply text is required" });
+    }
+
+    const experience = await Experience.findById(experienceId).populate("comments.user", "firstName lastName");
+    if (!experience) return res.status(404).json({ message: "Experience not found" });
+
+    const comment = experience.comments.id(commentId);
+    if (!comment) return res.status(404).json({ message: "Comment not found" });
+
+    comment.replies.push({
+      user: req.user.user._id,
+      text,
+    });
+
+    await experience.save();
+    await experience.populate("comments.replies.user", "firstName lastName");
+
+    const newReply = comment.replies[comment.replies.length - 1];
+    res.status(201).json({ reply: newReply });
+  } catch (error) {
+    console.error("Error adding reply:", error);
+    res.status(500).json({ message: "Failed to add reply" });
+  }
+});
+
 module.exports = router;

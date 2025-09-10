@@ -20,7 +20,21 @@ const experienceSchema = new mongoose.Schema({
   jobDescription: { type: String }, // <-- add this
   numberOfSelections: { type: Number }, // <-- add this
   name: { type: String, required: true }, // <-- add this
-  status: { type: String, required: true }
+  status: { type: String, required: true },
+  comments: [
+    {
+      user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+      text: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now },
+      replies: [
+        {
+          user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+          text: { type: String, required: true },
+          createdAt: { type: Date, default: Date.now },
+        }
+      ],
+    }
+  ]
 }, { timestamps: true });
 
 module.exports = mongoose.model("Experience", experienceSchema);

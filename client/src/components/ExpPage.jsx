@@ -14,12 +14,21 @@ const DropdownSection = ({ title, children }) => {
     </div>
   );
 };
+
+function autoGrow(e) {
+  e.target.style.height = "auto";
+  e.target.style.height = e.target.scrollHeight + "px";
+}
+
 const ExpPage = () => {
   const { id } = useParams();
   const [exp, setExp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expUser, setExpUser] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState("");
+  const [replyInputs, setReplyInputs] = useState({});
 
   const fetchUser = async () => {
     setLoading(true);
@@ -76,6 +85,7 @@ const ExpPage = () => {
   useEffect(() => {
     if (exp) {
       fetchUser();
+      fetchComments();
     }
   }, [exp]);
 
@@ -94,12 +104,87 @@ const ExpPage = () => {
   }
 
 
+  const fetchComments = async () => {
+  try {
+    const response = await fetch(
+      `${process.env.REACT_APP_API_URL || "http://localhost:8000"}/api/experiences/${id}/comments`,
+      { credentials: "include" }
+    );
+    const data = await response.json();
+    if (response.ok) {
+      setComments(data);
+    }
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+  }
+};
+
+const handleCommentSubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const response = await fetch(
+      `${process.env.REACT_APP_API_URL || "http://localhost:8000"}/api/experiences/${id}/comments`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ text: newComment }),
+      }
+    );
+    const data = await response.json();
+    if (response.ok) {
+      setComments([...comments, data.comment]);
+      setNewComment("");
+    } else {
+      alert(data.message);
+    }
+  } catch (error) {
+    console.error("Error submitting comment:", error);
+  }
+};
+
+
+
+const handleAddReply = async (commentId) => {
+  const text = replyInputs[commentId];
+  if (!text) return;
+
+  try {
+    const res = await fetch(
+      `${process.env.REACT_APP_API_URL || "http://localhost:8000"}/api/experiences/${id}/comments/${commentId}/replies`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ text }),
+      }
+    );
+    const data = await res.json();
+    if (res.ok) {
+      setComments((prev) =>
+        prev.map((c) =>
+          c._id === commentId
+            ? { ...c, replies: [...(c.replies || []), data.reply] }
+            : c
+        )
+      );
+      setReplyInputs({ ...replyInputs, [commentId]: "" });
+    } else {
+      alert(data.message);
+    }
+  } catch (err) {
+    console.error("Failed to add reply", err);
+  }
+};
+
+
   return (
     <div className="container">
       {loading ? (
         <p>Loading...</p>
       ) : (
         <>
+        <div className="top-section">
           <div className="left-section">
             <div className="details-section">
               <DropdownSection title="Job Description">
@@ -137,6 +222,53 @@ const ExpPage = () => {
                 <p>{exp?.other_comments}</p>
               </DropdownSection>
             </div>
+            <div className="comments-section">
+            <h2>Comments</h2>
+            {comments.length === 0 ? (
+              <p>No comments yet.</p>
+            ) : (
+                comments.map((c) => (
+                  <div key={c._id} className="comment">
+                    <strong>{c.user?.firstName} {c.user?.lastName}:</strong>
+                    <p>{c.text}</p>
+
+                    <div className="replies">
+                      {c.replies?.map((r) => (
+                        <div key={r._id} className="reply">
+                          <strong>{r.user?.firstName} {r.user?.lastName}:</strong>
+                          <p>{r.text}</p>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="add-reply">
+                      <input
+                        type="text"
+                        placeholder=" Write a reply..."
+                        value={replyInputs[c._id] || ""}
+                        onChange={(e) =>
+                          setReplyInputs({ ...replyInputs, [c._id]: e.target.value })
+                        }
+                      />
+                      <button onClick={() => handleAddReply(c._id)}>Reply</button>
+                    </div>
+                  </div>
+                )))}
+
+            <form onSubmit={handleCommentSubmit}>
+              <textarea
+                name="newComment"
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Write a comment..."
+                onInput={autoGrow}
+                rows={4}
+                style={{ width: "100%", minHeight: 150 }}
+                required
+              />
+              <button type="submit">Post</button>
+            </form>
+          </div>
           </div>
           <div className="right-section">
             <div className="user-card">
@@ -170,7 +302,7 @@ const ExpPage = () => {
                 </p>
               )}
 
-              {expUser.github === "" || expUser.linkedIn === undefined ? (
+              {expUser.github === "" || expUser.github === undefined ? (
                 ""
               ) : (
                 <p>
@@ -186,9 +318,12 @@ const ExpPage = () => {
               )}
             </div>
           </div>
+        </div>
+          
         </>
       )}
-      {error && <p>{error}</p>}
+      {error && <p>{error}</p>
+      }
     </div>
   );
 };
