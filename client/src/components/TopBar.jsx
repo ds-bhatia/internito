@@ -62,7 +62,7 @@ function TopBar() {
       <div className="logos">
         <div className="csesLogo">
           <a
-            href="https://www.instagram.com/cses_nitw/"
+            href="https://www.csesnitw.in/"
             target="_blank"
             rel="noopener noreferrer"
           >
