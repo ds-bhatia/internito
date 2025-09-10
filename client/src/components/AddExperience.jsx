@@ -131,8 +131,9 @@ const AddExperience = ({ initialExperience, editMode, experienceId }) => {
   // Interview Rounds
   const handleRoundChange = (idx, field, value) => {
     setExperience((prev) => {
-      const updated = [...prev.interviewRounds];
-      updated[idx][field] = value;
+      const updated = prev.interviewRounds.map((round, i) =>
+        i === idx ? { ...round, [field]: value } : round
+      );
       return { ...prev, interviewRounds: updated };
     });
   };
