@@ -186,12 +186,6 @@ const ExpPage = () => {
                 <p>{exp?.OT_description}
                </p>
               </DropdownSection>
-                <DropdownSection title="Number of Selections">
-                  <p>{exp?.numberOfSelections}</p>
-                </DropdownSection>
-                <DropdownSection title="Online Test Description">
-                  <p>{exp?.OT_description}</p>
-                </DropdownSection>
 
                 <DropdownSection title="Online Test Questions">
                   {exp?.OT_questions?.map((q, i) => (
@@ -209,15 +203,7 @@ const ExpPage = () => {
                   </div>
                 ))}
               </DropdownSection>
-                <DropdownSection title="Interview Rounds">
-                  {exp?.interviewRounds?.map((round, i) => (
-                    <div key={round._id || i} className="round-block">
-                      <h3>{round.title}</h3>
-                      <p>{round.description}</p>
-                    </div>
-                  ))}
-                </DropdownSection>
-
+              
                 <DropdownSection title="Other Comments">
                   <p>{exp?.other_comments}</p>
                 </DropdownSection>
