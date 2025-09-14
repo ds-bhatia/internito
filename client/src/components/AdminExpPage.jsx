@@ -14,6 +14,7 @@ const DropdownSection = ({ title, children }) => {
     </div>
   );
 };
+
 const ExpPage = () => {
   const { id } = useParams();
   const [exp, setExp] = useState(null);
@@ -22,6 +23,8 @@ const ExpPage = () => {
   const [decision, setDecision] = useState(null);
   const [expUser, setExpUser] = useState(null);
   const navigate = useNavigate();
+  const [comments, setComments] = useState([]);
+  const [collapsedReplies, setCollapsedReplies] = useState({});
 
   const fetchUser = async () => {
     setLoading(true);
@@ -34,7 +37,7 @@ const ExpPage = () => {
         { credentials: "include" }
       );
       const data = await response.json();
-      if (response.ok){
+      if (response.ok) {
         setExpUser(data.user);
         setLoading(false);
       } else {
@@ -58,8 +61,8 @@ const ExpPage = () => {
         }/api/experiences/specific/${id}`,
         { credentials: "include" }
       );
-      const data = await response.json()
-      if (response.ok){
+      const data = await response.json();
+      if (response.ok) {
         setExp(data);
       } else {
         console.error("Error fetching data:", data.message);
@@ -74,18 +77,28 @@ const ExpPage = () => {
   const handleDecision = async (id, d) => {
     try {
       if (d === "rejected") {
-        await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/experiences/delete/${id}`, {
-          method: "DELETE",
-        });
+        await fetch(
+          `${
+            process.env.REACT_APP_API_URL || "http://localhost:8000"
+          }/api/experiences/delete/${id}`,
+          {
+            method: "DELETE",
+          }
+        );
         setDecision(<p className="success">Experience deleted</p>);
       } else {
-        await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:8000'}/api/experiences/verify/${id}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ status: d }),
-        });
+        await fetch(
+          `${
+            process.env.REACT_APP_API_URL || "http://localhost:8000"
+          }/api/experiences/verify/${id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ status: d }),
+          }
+        );
         setDecision(<p className="success">Experience accepted</p>);
       }
       setTimeout(() => {
@@ -104,8 +117,38 @@ const ExpPage = () => {
   useEffect(() => {
     if (exp) {
       fetchUser();
+      fetchComments();
     }
   }, [exp]);
+
+  const fetchComments = async () => {
+    try {
+      const response = await fetch(
+        `${
+          process.env.REACT_APP_API_URL || "http://localhost:8000"
+        }/api/experiences/${id}/comments`,
+        { credentials: "include" }
+      );
+      const data = await response.json();
+      if (response.ok) {
+        setComments(data);
+        const collapsed = {};
+        data.forEach((c) => {
+          collapsed[c._id] = true;
+        });
+        setCollapsedReplies(collapsed);
+      }
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+    }
+  };
+
+  const toggleReplies = (commentId) => {
+    setCollapsedReplies((prev) => ({
+      ...prev,
+      [commentId]: !prev[commentId],
+    }));
+  };
 
   const printRoundDuration = (a) => {
     let s = "";
@@ -127,11 +170,12 @@ const ExpPage = () => {
         <p>Loading...</p>
       ) : (
         <>
-          <div className="left-section">
-            <div className="details-section">
-              <DropdownSection title="Job Description">
-                <p>{exp?.jobDescription}</p>
-              </DropdownSection>
+          <div className="top-section">
+            <div className="left-section">
+              <div className="details-section">
+                <DropdownSection title="Job Description">
+                  <p>{exp?.jobDescription}</p>
+                </DropdownSection>
 
               <DropdownSection title="Number of Selections">
                 <p>{exp?.numberOfSelections}</p>
@@ -142,14 +186,20 @@ const ExpPage = () => {
                 <p>{exp?.OT_description}
                </p>
               </DropdownSection>
+                <DropdownSection title="Number of Selections">
+                  <p>{exp?.numberOfSelections}</p>
+                </DropdownSection>
+                <DropdownSection title="Online Test Description">
+                  <p>{exp?.OT_description}</p>
+                </DropdownSection>
 
-              <DropdownSection title="Online Test Questions">
-                {exp?.OT_questions?.map((q, i) => (
-                  <div key={i} className="question-block">
-                    <p>{q}</p>
-                  </div>
-                ))}
-              </DropdownSection>
+                <DropdownSection title="Online Test Questions">
+                  {exp?.OT_questions?.map((q, i) => (
+                    <div key={i} className="question-block">
+                      <p>{q}</p>
+                    </div>
+                  ))}
+                </DropdownSection>
 
               <DropdownSection title="Interview Rounds">
                 {exp?.interviewRounds?.map((round, i) => (
@@ -159,13 +209,65 @@ const ExpPage = () => {
                   </div>
                 ))}
               </DropdownSection>
+                <DropdownSection title="Interview Rounds">
+                  {exp?.interviewRounds?.map((round, i) => (
+                    <div key={round._id || i} className="round-block">
+                      <h3>{round.title}</h3>
+                      <p>{round.description}</p>
+                    </div>
+                  ))}
+                </DropdownSection>
 
-              <DropdownSection title="Other Comments">
-                <p>{exp?.other_comments}</p>
-              </DropdownSection>
+                <DropdownSection title="Other Comments">
+                  <p>{exp?.other_comments}</p>
+                </DropdownSection>
+              </div>
+
+              <div className="comments-section">
+                <h2>Comments</h2>
+                {comments.length === 0 ? (
+                  <p>No comments yet.</p>
+                ) : (
+                  comments.map((c) => (
+                    <div key={c._id} className="comment">
+                      <strong>
+                        {c.user?.firstName} {c.user?.lastName}:
+                      </strong>
+                      <p>{c.text}</p>
+
+                      <div className="replies-section">
+                        {c.replies?.length > 0 && (
+                          <button
+                            className="toggle-replies-btn"
+                            onClick={() => toggleReplies(c._id)}
+                          >
+                            {collapsedReplies[c._id]
+                              ? `View ${c.replies.length} repl${
+                                  c.replies.length > 1 ? "ies" : "y"
+                                }`
+                              : "Hide replies"}
+                          </button>
+                        )}
+
+                        {!collapsedReplies[c._id] && c.replies?.length > 0 && (
+                          <div className="replies">
+                            {c.replies.map((r) => (
+                              <div key={r._id} className="reply">
+                                <strong>
+                                  {r.user?.firstName} {r.user?.lastName}:
+                                </strong>
+                                <p>{r.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
-          </div>
-          <div className="right-section">
+            <div className="right-section">
             <div className="user-card">
               <h1 className="user-title">User Details</h1>
               <p>
@@ -193,7 +295,8 @@ const ExpPage = () => {
                 ""
               ) : (
                 <p>
-                  <span className="label">LinkedIn: </span>{expUser.linkedIn}
+                  <span className="label">LinkedIn: </span>
+                  {expUser.linkedIn}
                 </p>
               )}
 
@@ -208,7 +311,8 @@ const ExpPage = () => {
                 ""
               ) : (
                 <p>
-                  <span className="label">Resume: </span>{expUser.resume}
+                  <span className="label">Resume: </span>
+                  {expUser.resume}
                 </p>
               )}
             </div>
@@ -226,6 +330,8 @@ const ExpPage = () => {
             </button>
             {decision}
           </div>
+          </div>
+
         </>
       )}
       {error && <p>{error}</p>}

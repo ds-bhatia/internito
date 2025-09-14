@@ -182,11 +182,11 @@
     padding: 0.25rem;
   }
 
-   .replyText {
+  .replyText {
     padding: 5%;
   }
 
-  .comments-section .replies-actions .toggle-replies-btn {
+  .comments-section .replies-section .toggle-replies-btn {
     background: transparent;
     border: none;
     color: #548d36;
@@ -198,7 +198,7 @@
     display: inline-block;
     line-height: 1;
   }
-  .comments-section .replies-actions .toggle-replies-btn:hover {
+  .comments-section .replies-section .toggle-replies-btn:hover {
     text-decoration: underline;
     background: transparent;
   }

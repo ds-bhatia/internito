@@ -280,7 +280,7 @@ router.post('/company', async (req, res) => {
   }
 });
 
-
+// Fetching comments
 router.get("/:id/comments", async (req, res) => {
   try {
     const { id } = req.params;
@@ -296,6 +296,7 @@ router.get("/:id/comments", async (req, res) => {
   }
 });
 
+// Posts comment and notifies via email
 router.post("/:id/comments", async (req, res) => {
   try {
     const { id } = req.params;
@@ -321,7 +322,6 @@ router.post("/:id/comments", async (req, res) => {
     const created = experience.comments[experience.comments.length - 1];
 
     const owner = experience.user;
-    // console.log(owner);
     const commenter = req.user.user;
 
     if (owner.email) {
@@ -375,6 +375,7 @@ router.post("/:id/comments", async (req, res) => {
   }
 });
 
+// Posts reply
 router.post("/:experienceId/comments/:commentId/replies", async (req, res) => {
   try {
     if (!req.user || !req.user.user) {
