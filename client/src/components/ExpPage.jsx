@@ -29,6 +29,9 @@ const ExpPage = () => {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState("");
   const [replyInputs, setReplyInputs] = useState({});
+  const [collapsedReplies, setCollapsedReplies] = useState({});
+  const [openReplyBoxes, setOpenReplyBoxes] = useState({});
+
 
   const fetchUser = async () => {
     setLoading(true);
@@ -113,6 +116,11 @@ const ExpPage = () => {
     const data = await response.json();
     if (response.ok) {
       setComments(data);
+      const collapsed = {};
+      data.forEach((c) => {
+        collapsed[c._id] = true;
+      });
+      setCollapsedReplies(collapsed);
     }
   } catch (error) {
     console.error("Error fetching comments:", error);
@@ -169,12 +177,21 @@ const handleAddReply = async (commentId) => {
         )
       );
       setReplyInputs({ ...replyInputs, [commentId]: "" });
+      setOpenReplyBoxes((prev) => ({ ...prev, [commentId]: false }));
     } else {
       alert(data.message);
     }
   } catch (err) {
     console.error("Failed to add reply", err);
   }
+};
+
+
+const toggleReplies = (commentId) => {
+  setCollapsedReplies((prev) => ({
+    ...prev,
+    [commentId]: !prev[commentId],
+  }));
 };
 
 
@@ -232,27 +249,58 @@ const handleAddReply = async (commentId) => {
                     <strong>{c.user?.firstName} {c.user?.lastName}:</strong>
                     <p>{c.text}</p>
 
-                    <div className="replies">
-                      {c.replies?.map((r) => (
-                        <div key={r._id} className="reply">
-                          <strong>{r.user?.firstName} {r.user?.lastName}:</strong>
-                          <p>{r.text}</p>
-                        </div>
-                      ))}
+                    <div className="replies-section">
+                    <div className="replies-actions">
+                      {c.replies?.length > 0 && (
+                        <button
+                          className="toggle-replies-btn"
+                          onClick={() => toggleReplies(c._id)}
+                        >
+                          {collapsedReplies[c._id]
+                            ? `View ${c.replies.length} repl${c.replies.length > 1 ? "ies" : "y"}`
+                            : "Hide replies"}
+                        </button>
+                      )}
+
+                      <button
+                        className="toggle-replies-btn"
+                        onClick={() =>
+                          setOpenReplyBoxes((prev) => ({
+                            ...prev,
+                            [c._id]: !prev[c._id],
+                          }))
+                        }
+                      >
+                        {openReplyBoxes[c._id] ? "Cancel" : "Reply"}
+                      </button>
                     </div>
 
-                    <div className="add-reply">
-                      <input
-                        type="text"
-                        placeholder=" Write a reply..."
-                        value={replyInputs[c._id] || ""}
-                        onChange={(e) =>
-                          setReplyInputs({ ...replyInputs, [c._id]: e.target.value })
-                        }
-                      />
-                      <button onClick={() => handleAddReply(c._id)}>Reply</button>
-                    </div>
+                    {!collapsedReplies[c._id] && c.replies?.length > 0 && (
+                      <div className="replies">
+                        {c.replies.map((r) => (
+                          <div key={r._id} className="reply">
+                            <strong>{r.user?.firstName} {r.user?.lastName}:</strong>
+                            <p>{r.text}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {openReplyBoxes[c._id] && (
+                      <div className="add-reply">
+                        <input
+                          type="text"
+                          placeholder="Write a reply..."
+                          value={replyInputs[c._id] || ""}
+                          onChange={(e) =>
+                            setReplyInputs({ ...replyInputs, [c._id]: e.target.value })
+                          }
+                        />
+                        <button onClick={() => handleAddReply(c._id)}>Post</button>
+                      </div>
+                    )}
                   </div>
+                </div>
                 )))}
 
             <form onSubmit={handleCommentSubmit}>

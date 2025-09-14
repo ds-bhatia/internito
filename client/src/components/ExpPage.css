@@ -174,7 +174,38 @@
   .add-reply {
     margin-left: 1.5rem;
     margin-top: 0.3rem;
+    flex-direction: column;
   }
+
+  .add-reply input {
+    margin-right: 1.5rem;
+    padding: 0.25rem;
+  }
+
+   .replyText {
+    padding: 5%;
+  }
+
+  .comments-section .replies-actions .toggle-replies-btn {
+    background: transparent;
+    border: none;
+    color: #548d36;
+    font-size: 0.9rem;
+    font-weight: 500;
+    padding: 0;
+    margin-left: 0.8rem;
+    cursor: pointer;
+    display: inline-block;
+    line-height: 1;
+  }
+  .comments-section .replies-actions .toggle-replies-btn:hover {
+    text-decoration: underline;
+    background: transparent;
+  }
+
+
+
+ 
 
   
   .bubble {
