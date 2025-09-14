@@ -138,7 +138,7 @@ const ExpPage = () => {
               </DropdownSection>
               <DropdownSection title="Online Test Description">
                 {/* find a better fix*/}
-                <div className="round-heading"><h3>Online Test: </h3> {exp?.OT_duration !== "" ?<span className="bubble">{printRoundDuration(exp?.OT_duration)}</span> : null}</div> 
+                <div className="round-heading"><h3>Online Test: </h3> {exp?.OT_duration ?<span className="bubble">{printRoundDuration(exp?.OT_duration)}</span> : null}</div> 
                 <p>{exp?.OT_description}
                </p>
               </DropdownSection>
@@ -154,7 +154,7 @@ const ExpPage = () => {
               <DropdownSection title="Interview Rounds">
                 {exp?.interviewRounds?.map((round, i) => (
                   <div key={round._id || i} className="round-block">
-                    <h3 className = "round-heading">{round.title} <span className="bubble">{printRoundDuration(round.duration)}</span></h3>
+                    <h3 className = "round-heading">{round.title} {round.duration ?<span className="bubble">{printRoundDuration(round.duration)}</span> : null}</h3>
                     <p>{round.description}</p>
                   </div>
                 ))}
